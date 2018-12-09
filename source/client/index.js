@@ -48,7 +48,7 @@ module.exports = function Factory(uid, opts) {
             console.log(`${friend.uid} says '${msg.body}'`);
             break;
           case 'keep-alive':
-            console.log(`telling ${fridn.uid} that I'm alive`);
+            console.log(`telling ${friend.uid} that I'm alive`);
             this.sendIsAlive(friend.uid);
             break;
           case 'is-alive':
