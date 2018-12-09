@@ -19,16 +19,16 @@ module.exports = function Factory(uid, opts) {
 
     address: null,
 
-    updateResolution(stun) {
+    updateResolution(value) {
       return Q.fcall(() => {
-        if (this.address && this.address.public.host == stun.public.host && this.address.public.port == stun.public.port) {
+        if (this.address && this.address.public.host == value.public.host && this.address.public.port == value.public.port) {
           return null;
         }
         return request
-          .post(`${locationServer}/${uid}`, stun)
+          .post(`${locationServer}/${uid}`, value)
           .then((reply) => {
-            console.log('location updated', stun);
-            this.address = stun;
+            console.log('location updated', value);
+            this.address = value;
           });
       })
         .catch((err) => {
@@ -107,6 +107,7 @@ module.exports = function Factory(uid, opts) {
 
       return Q.all(send.map((friend) => {
         const { tryCount = 0 } = friend;
+        friend.online = false;
         friend.tryCount = tryCount + 1;
         friend.lastTime = Date.now();
         return this.sendKeepAlive(friend.uid)
