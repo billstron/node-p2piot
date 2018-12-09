@@ -48,10 +48,10 @@ module.exports = function Factory(uid, opts) {
     sendMessage(uid, message, callback) {
       let friend;
       return Q.fcall(() => {
-        friend = this.friends.find(friend => friend.uid === uid);
-        if (friend.address) {
-          return friend.address;
-        }
+        // friend = this.friends.find(friend => friend.uid === uid);
+        // if (friend.address) {
+        //   return friend.address;
+        // }
         return request
           .get(`${locationServer}/${friend.uid}`)
           .then(reply => reply.data);
