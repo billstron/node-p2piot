@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/billstron/node-p2piot#readme",
   "dependencies": {
+    "axios": "^0.18.0",
     "body-parser": "^1.18.3",
     "dotenv": "^6.2.0",
     "express": "^4.16.4",
