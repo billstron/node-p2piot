@@ -94,7 +94,11 @@ module.exports = function Factory(uid, opts) {
     },
 
     sendKeepAlive(uid) {
-      return this.sendMessage(uid, { type: 'keep-alive' });
+      return this.sendMessage(uid, { type: 'keep-alive' })
+        .then(() => {
+          const friend = this.friend.find(friend => friend.uid === uid);
+          friend.online = false;
+        });
     },
 
     processKeepAlives() {
@@ -107,7 +111,6 @@ module.exports = function Factory(uid, opts) {
 
       return Q.all(send.map((friend) => {
         const { tryCount = 0 } = friend;
-        friend.online = false;
         friend.tryCount = tryCount + 1;
         friend.lastTime = Date.now();
         return this.sendKeepAlive(friend.uid)
