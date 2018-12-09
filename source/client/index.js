@@ -96,7 +96,7 @@ module.exports = function Factory(uid, opts) {
     sendKeepAlive(uid) {
       return this.sendMessage(uid, { type: 'keep-alive' })
         .then(() => {
-          const friend = this.friend.find(friend => friend.uid === uid);
+          const friend = this.friends.find(friend => friend.uid === uid);
           friend.online = false;
         });
     },
