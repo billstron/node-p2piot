@@ -8,23 +8,27 @@ const server2 = { host: 'stun1.l.google.com', port: 19302 };
 module.exports = function Factory(uid, opts) {
   const DT_RESOLUTION = 10000;
 
-  const { stunServers, locationServer } = opts;
-
-  const location = locationServer.port ?
-    `http://${locationServer.host}:${locationServer.port}` :
-    `http://${locationServer.host}`;
+  const { stunServer, locationServer } = opts;
 
   const self = {
     friends: [],
 
     uid,
 
+    address: null,
+
     updateResolution(stun) {
-      return request
-        .post(`${location}/${uid}`, stun)
-        .then((reply) => {
-          console.log('location updated', stun);
-        })
+      return Q.fcall(() => {
+        if (this.address && this.address.public.host == stun.public.host && this.address.public.port == stun.public.port) {
+          return null;
+        }
+        return request
+          .post(`${locationServer}/${uid}`, stun)
+          .then((reply) => {
+            console.log('location updated', stun);
+            this.address = stun;
+          });
+      })
         .catch((err) => {
           console.log('location update failed', err);
         });
@@ -32,8 +36,8 @@ module.exports = function Factory(uid, opts) {
 
     onMessage(msg, rinfo) {
       const { address, port } = rinfo;
-      const friend = this.friends.find((friend) => {
-        return friend.address.public.host === address && friend.address.public.port === port;
+      const friend = this.friends.find(({ address }) => {
+        return address && address.public.host === rinfo.address && address.public.port === rinfo.port;
       });
       if (friend) {
         const text = msg.toString('utf8');
@@ -46,12 +50,11 @@ module.exports = function Factory(uid, opts) {
       return Q.fcall(() => {
         friend = this.friends.find(friend => friend.uid === uid);
         if (friend.address) {
-          return address;
+          return friend.address;
         }
-
         return request
-          .get(`${location}/${uid}`)
-          .then((reply) => reply.body);
+          .get(`${locationServer}/${friend.uid}`)
+          .then(reply => reply.data);
       })
         .then((address) => {
           friend.address = address;
@@ -65,38 +68,49 @@ module.exports = function Factory(uid, opts) {
         })
     },
 
-    connect(server, callback) {
-      const [server] = stunServers;
-      stun.connect(server, (error, value) => {
-        if (error) {
-          return callback(error);
-          return console.log('Something went wrong: ' + error);
-        }
+    addFriend(uid) {
+      this.friends.push({ uid });
+    },
 
-        this.socket = value;
-        console.log(this.socket.stun);
-        this.updateResolution(this.socket.stun);
+    init() {
+      this.socket.on('message', this.onMessage.bind(this));
 
-        this.socket.on('message', this.onMessage.bind(this));
-
-        const resolver = setInterval(() => {
-          stun.resolve(this.socket, server, (error, value) => {
-            if (error) {
-              console.error('Error with resolution', error);
-              socket.close();
-              return clearInterval(resolver);
-            }
-
+      this.resolver = setInterval(() => {
+        Q.ninvoke(stun, 'resolve', this.socket, server)
+          .then((value) => {
             return this.updateResolution(value);
+          })
+          .catch((error) => {
+            console.error('Error with resolution', error);
+            console.error('closing');
+            this.close();
           });
-        }, DT_RESOLUTION);
-      });
+      }, DT_RESOLUTION);
 
       setInterval(() => {
         this.friends.forEach(({ uid }) => this.sendMessage(uid, 'ping'));
       }, 2000);
+    },
+
+    close() {
+      socket.close();
+      return clearInterval(this.resolver);
+    },
+
+    connect() {
+      return Q.ninvoke(stun, 'connect', stunServer)
+        .then((value) => {
+          this.socket = value;
+          return this.updateResolution(this.socket.stun);
+        })
+        .then(() => {
+          return this.init();
+        })
+        .then(() => {
+          return this;
+        });
     }
   };
 
-  self.connect(stunServer, callback);
+  return self;
 };

@@ -1,7 +1,7 @@
 require('dotenv').config()
 const { client } = require('../');
 
-const uid = 'a12345';
+const uid = 'b12345';
 const opts = {
   locationServer: 'http://34.238.60.160:3000',
   stunServer: {
@@ -13,8 +13,8 @@ const opts = {
 client(uid, opts)
   .connect()
   .then((a) => {
-    a.addFriend('b12345');
+    a.addFriend('a12345');
   })
   .catch((error) => {
     console.error(error);
-  })
+  });
