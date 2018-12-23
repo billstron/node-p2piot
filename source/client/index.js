@@ -125,15 +125,14 @@ module.exports = function Factory(uid, opts) {
     sendRequest(uid, request) {
       const def = Q.defer();
 
-      const callback = (rid, body) => {
-        if (rid === id) {
-          this.removeListener('response', callback);
-          promise.resolve(body);
-        }
-      }
-
       this.sendMessage(uid, { type: 'request', data: request })
         .then((id) => {
+          const callback = (rid, body) => {
+            if (rid === id) {
+              this.removeListener('response', callback);
+              promise.resolve(body);
+            }
+          };
           this.on('response', callback);
         });
 
