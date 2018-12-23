@@ -44,6 +44,7 @@ module.exports = function Factory(uid, opts) {
       });
       if (friend) {
         const msg = JSON.parse(buffer.toString('utf8'));
+        this.emit('incoming', friend.uid, msg);
         const { type, id, data } = msg;
         let method;
         let route;
@@ -51,24 +52,18 @@ module.exports = function Factory(uid, opts) {
         switch(type) {
           case 'request':
             ({ method, route, body } = data);
-            console.log(`${friend.uid}: ${method}, ${route}, ${body}`);
             this.handleRequest(friend.uid, id, data);
-            break;
-          case 'keep-alive':
-            console.log(`${friend.uid}: keep-alive, ${id}`);
-            this.sendIsAlive(friend.uid, id);
             break;
           case 'response':
             ({ rid, status, body } = data);
-            console.log(`${friend.uid}: response ${rid}`);
             this.emit('response', rid, { status, body });
+            break;
+          case 'keep-alive':
+            this.handleKeepAlive(friend.uid, id);
             break;
           case 'is-alive':
             ({ rid } = data);
-            console.log(`${friend.uid}: is-alive, ${rid}`);
-            friend.online = true;
-            friend.lastTime = Date.now();
-            friend.tryCount = 0;
+            this.emit('is-alive', rid, friend.uid);
             break;
           default:
             console.log(`${friend.uid}:`, msg);
@@ -105,15 +100,31 @@ module.exports = function Factory(uid, opts) {
         });
     },
 
-    sendIsAlive(uid, rid) {
+    handleKeepAlive(uid, rid) {
+      const friend = this.friends.find(friend => friend.uid === uid);
+      friend.online = true;
+      friend.lastTime = Date.now();
+      friend.tryCount = 0;
+      this.emit('online', friend.uid);
       return this.sendMessage(uid, { type: 'is-alive', data: { rid } });
     },
 
     sendKeepAlive(uid) {
-      return this.sendMessage(uid, { type: 'keep-alive' })
-        .then(() => {
+      this.sendMessage(uid, { type: 'keep-alive' })
+        .then((id) => {
           const friend = this.friends.find(friend => friend.uid === uid);
           friend.online = false;
+
+          const callback = (rid, uid) => {
+            if (rid === id) {
+              this.removeListener('is-alive', callback);
+              friend.online = true;
+              friend.lastTime = Date.now();
+              friend.tryCount = 0;
+              this.emit('online', friend.uid);
+            }
+          };
+          this.on('is-alive', callback);
         });
     },
 
@@ -185,11 +196,7 @@ module.exports = function Factory(uid, opts) {
         this.processKeepAlives();
       }, 100);
 
-      this.emit('started');
-
-      // setInterval(() => {
-      //   this.friends.forEach(({ uid }) => this.sendMessage(uid, 'ping'));
-      // }, 2000);
+      this.emit('connected');
     },
 
     close() {
@@ -213,6 +220,4 @@ module.exports = function Factory(uid, opts) {
   };
 
   return Object.assign(self, EventEmitter.prototype);
-
-  return self;
 };

@@ -10,18 +10,20 @@ const opts = {
   },
 };
 
-client(uid, opts)
-  .connect()
-  .then((a) => {
-    a.addFriend('b12345');
+const a = client(uid, opts)
+a.connect();
+a.once('connected', () => {
+  console.log('connected');
+});
 
-    setInterval(() => {
-      a.request('b12345', { route: '/ping', method: 'GET' })
-        .then((reply) => {
-          console.log(reply);
-        });
-    }, 20000)
-  })
-  .catch((error) => {
-    console.error(error);
-  })
+a.addFriend('b12345');
+setInterval(() => {
+  a.request('b12345', { route: '/ping', method: 'GET' })
+    .then((reply) => {
+      console.log(reply);
+    });
+}, 20000);
+
+a.on('online', (uid) => {
+  console.log(`online: ${uid}`);
+});

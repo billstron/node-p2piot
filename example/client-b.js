@@ -10,20 +10,23 @@ const opts = {
   },
 };
 
-client(uid, opts)
-  .connect()
-  .then((b) => {
-    b.addFriend('a12345');
-    b.router = function router(req, response) {
-      const { route, method, body } = req;
-      switch(route) {
-        case '/ping':
-          return response(200, { msg: 'pong' });
-        default:
-          return response(404, { msg: 'not found' });
-      }
-    };
-  })
-  .catch((error) => {
-    console.error(error);
-  });
+const b = client(uid, opts);
+b.connect()
+b.once('connected', () => {
+  console.log('connected');
+});
+
+b.addFriend('a12345');
+b.router = function router(req, response) {
+  const { route, method, body } = req;
+  switch(route) {
+    case '/ping':
+      return response(200, { msg: 'pong' });
+    default:
+      return response(404, { msg: 'not found' });
+  }
+};
+
+a.on('online', (uid) => {
+  console.log(`online: ${uid}`);
+});
