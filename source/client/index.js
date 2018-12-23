@@ -3,6 +3,11 @@ const stun = require('vs-stun');
 const request = require('axios');
 const EventEmitter = require('events');
 const util = require('util');
+const crypto = require('crypto');
+
+const algorithm = 'aes256';
+const inputEncoding = 'utf8';
+const outputEncoding = 'utf8';
 
 module.exports = function Factory(uid, opts) {
   const DT_RESOLUTION = 300000;  // 5 minutes
@@ -43,12 +48,19 @@ module.exports = function Factory(uid, opts) {
         return address && address.public.host === rinfo.address && address.public.port === rinfo.port;
       });
       if (friend) {
-        const msg = JSON.parse(buffer.toString('utf8'));
+        const text = buffer.toString('utf8');
+
         this.emit('incoming', friend.uid, msg);
+        const decipher = crypto.createDecipher(algorithm, friend.key);
+        let deciphered = decipher.update(text, outputEncoding, inputEncoding);
+        deciphered += decipher.final(inputEncoding);
+        const msg = JSON.parse(deciphered);
+
         const { type, id, data } = msg;
         let method;
         let route;
         let body;
+        let state;
         switch(type) {
           case 'request':
             ({ method, route, body } = data);
@@ -87,9 +99,12 @@ module.exports = function Factory(uid, opts) {
           .then(reply => reply.data);
       })
         .then((address) => {
+          const cipher = crypto.createCipher(algorithm, friend.key);
+          let ciphered = cipher.update(text, inputEncoding, outputEncoding);
+          ciphered += cipher.final(outputEncoding);
           friend.address = address;
           const { port, host } = address.public;
-          this.socket.send(message, 0, message.length, port, host, (error) => {
+          this.socket.send(ciphered, 0, ciphered.length, port, host, (error) => {
             if (error) {
               return console.log(`error sending message to ${uid}`, error);
             }
@@ -172,8 +187,8 @@ module.exports = function Factory(uid, opts) {
       }));
     },
 
-    addFriend(uid) {
-      this.friends.push({ uid });
+    addFriend(uid, key = null) {
+      this.friends.push({ uid, key });
     },
 
     init() {

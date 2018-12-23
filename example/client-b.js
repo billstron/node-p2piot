@@ -16,7 +16,7 @@ b.once('connected', () => {
   console.log('connected');
 });
 
-b.addFriend('a12345');
+b.addFriend('a12345', 'oiuytertyukjhg');
 b.router = function router(req, response) {
   const { route, method, body } = req;
   switch(route) {

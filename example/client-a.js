@@ -16,7 +16,7 @@ a.once('connected', () => {
   console.log('connected');
 });
 
-a.addFriend('b12345');
+a.addFriend('b12345', 'oiuytertyukjhg');
 setInterval(() => {
   a.request('b12345', { route: '/ping', method: 'GET' })
     .then((reply) => {
