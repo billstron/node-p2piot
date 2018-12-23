@@ -12,8 +12,17 @@ const opts = {
 
 client(uid, opts)
   .connect()
-  .then((a) => {
-    a.addFriend('a12345');
+  .then((b) => {
+    b.addFriend('a12345');
+    b.router((req, response) => {
+      const { route, method, body } = req;
+      switch(route) {
+        case '/ping':
+          return response(200, { msg: 'pong' });
+        default:
+          return response(404, { msg: 'not found' });
+      }
+    })
   })
   .catch((error) => {
     console.error(error);
