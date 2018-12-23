@@ -125,7 +125,7 @@ module.exports = function Factory(uid, opts) {
           const callback = (rid, body) => {
             if (rid === id) {
               this.removeListener('response', callback);
-              promise.resolve(body);
+              def.resolve(body);
             }
           };
           this.on('response', callback);
