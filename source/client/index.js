@@ -82,7 +82,6 @@ module.exports = function Factory(uid, opts) {
         if (friend.online) {
           return friend.address;
         }
-        this.emit('outgoing', friend.uid, toSend);
         return request
           .get(`${locationServer}/${friend.uid}`)
           .then(reply => reply.data);
@@ -94,7 +93,7 @@ module.exports = function Factory(uid, opts) {
             if (error) {
               return console.log(`error sending message to ${uid}`, error);
             }
-            console.log(`message sent to ${host}:${port}`);
+            this.emit('outgoing', friend.uid, toSend);
           });
           return this.id;
         });
