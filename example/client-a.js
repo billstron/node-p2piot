@@ -1,4 +1,4 @@
-require('dotenv').config()
+require('dotenv').config();
 const { client } = require('../');
 
 const uid = 'a12345';
@@ -14,6 +14,10 @@ client(uid, opts)
   .connect()
   .then((a) => {
     a.addFriend('b12345');
+
+    setInterval(() => {
+      client.sendRequest('b12345', '/ping', 'GET');
+    }, 1000)
   })
   .catch((error) => {
     console.error(error);

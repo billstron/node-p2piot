@@ -2,11 +2,8 @@ const Q = require('q');
 const stun = require('vs-stun');
 const request = require('axios');
 
-const server = { host: 'stun.l.google.com', port: 19302 };
-const server2 = { host: 'stun1.l.google.com', port: 19302 };
-
 module.exports = function Factory(uid, opts) {
-  const DT_RESOLUTION = 10000;
+  const DT_RESOLUTION = 300000;  // 5 minutes
   const DT_KEEP_ALIVE = 60000;
   const DT_OFFLINE_RETRY = 2000;
 
@@ -14,6 +11,8 @@ module.exports = function Factory(uid, opts) {
 
   const self = {
     friends: [],
+
+    id: 0,
 
     uid,
 
@@ -43,16 +42,18 @@ module.exports = function Factory(uid, opts) {
       });
       if (friend) {
         const msg = JSON.parse(buffer.toString('utf8'));
-        switch(msg.type) {
-          case 'text':
-            console.log(`${friend.uid} says '${msg.body}'`);
+        const { type, id, data, rid } = msg;
+        switch(type) {
+          case 'request':
+            const { method, route, body } = data;
+            console.log(`${friend.uid}: ${method}, ${route}, ${body}`);
             break;
           case 'keep-alive':
-            console.log(`telling ${friend.uid} that I'm alive`);
-            this.sendIsAlive(friend.uid);
+            console.log(`${friend.uid}: keep-alive, ${id}`);
+            this.sendIsAlive(friend.uid, id);
             break;
           case 'is-alive':
-            console.log(`friend ${friend.uid} is alive`);
+            console.log(`${friend.uid}: is-alive, ${rid}`);
             friend.online = true;
             friend.lastTime = Date.now();
             friend.tryCount = 0;
@@ -66,7 +67,9 @@ module.exports = function Factory(uid, opts) {
 
     sendMessage(uid, data) {
       let friend;
-      const message = JSON.stringify(data);
+      this.id += 1;
+      const toSend = Object.assign({}, data, { id: this.id });
+      const message = JSON.stringify(toSend);
       return Q.fcall(() => {
         friend = this.friends.find(friend => friend.uid === uid);
         if (friend.online) {
@@ -89,8 +92,8 @@ module.exports = function Factory(uid, opts) {
         })
     },
 
-    sendIsAlive(uid) {
-      return this.sendMessage(uid, { type: 'is-alive' });
+    sendIsAlive(uid, rid) {
+      return this.sendMessage(uid, { type: 'is-alive', rid });
     },
 
     sendKeepAlive(uid) {
@@ -99,6 +102,10 @@ module.exports = function Factory(uid, opts) {
           const friend = this.friends.find(friend => friend.uid === uid);
           friend.online = false;
         });
+    },
+
+    sendRequest(uid, route, method, body) {
+      return this.sendMessage(uid, { type: 'request', data: { route, method, body } });
     },
 
     processKeepAlives() {
