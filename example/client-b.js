@@ -14,7 +14,7 @@ client(uid, opts)
   .connect()
   .then((b) => {
     b.addFriend('a12345');
-    b.router((req, response) => {
+    b.router = function router(req, response) {
       const { route, method, body } = req;
       switch(route) {
         case '/ping':
@@ -22,7 +22,7 @@ client(uid, opts)
         default:
           return response(404, { msg: 'not found' });
       }
-    })
+    };
   })
   .catch((error) => {
     console.error(error);

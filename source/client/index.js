@@ -139,10 +139,11 @@ module.exports = function Factory(uid, opts) {
       const response = (status, body) => {
         this.sendMessage(uid, { type: 'response', data: { rid, status, body } });
       };
-      if (typeof this.router == 'function') {
-        this.router({ route, method, body, uid }, response);
-      }
-      response(404, { msg: 'not found' });
+      this.router({ route, method, body, uid }, response);
+    },
+
+    router(req, res) {
+      res(404, { msg: 'not found' });
     },
 
     processKeepAlives() {
