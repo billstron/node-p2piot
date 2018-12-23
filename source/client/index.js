@@ -82,7 +82,7 @@ module.exports = function Factory(uid, opts) {
         if (friend.online) {
           return friend.address;
         }
-        console.log('getting address from server', friend.uid);
+        this.emit('outgoing', friend.uid, toSend);
         return request
           .get(`${locationServer}/${friend.uid}`)
           .then(reply => reply.data);
@@ -103,7 +103,7 @@ module.exports = function Factory(uid, opts) {
     handleKeepAlive(uid, rid) {
       const friend = this.friends.find(friend => friend.uid === uid);
       friend.online = true;
-      friend.lastTime = Date.now();
+      friend.lastTime = Date.now() - DT_OFFLINE_RETRY;
       friend.tryCount = 0;
       this.emit('online', friend.uid);
       return this.sendMessage(uid, { type: 'is-alive', data: { rid } });
@@ -181,7 +181,7 @@ module.exports = function Factory(uid, opts) {
       this.socket.on('message', this.onMessage.bind(this));
 
       this.resolver = setInterval(() => {
-        Q.ninvoke(stun, 'resolve', this.socket, server)
+        Q.ninvoke(stun, 'resolve', this.socket, stunServer)
           .then((value) => {
             return this.updateResolution(value);
           })
