@@ -1,6 +1,8 @@
 const Q = require('q');
 const stun = require('vs-stun');
 const request = require('axios');
+const EventEmitter = require('events');
+const util = require('util');
 
 module.exports = function Factory(uid, opts) {
   const DT_RESOLUTION = 300000;  // 5 minutes
@@ -51,6 +53,10 @@ module.exports = function Factory(uid, opts) {
           case 'keep-alive':
             console.log(`${friend.uid}: keep-alive, ${id}`);
             this.sendIsAlive(friend.uid, id);
+            break;
+          case 'response':
+            console.log(`${friend.uid}: response ${rid}`);
+            this.emit('response', rid, data);
             break;
           case 'is-alive':
             console.log(`${friend.uid}: is-alive, ${rid}`);
@@ -104,8 +110,22 @@ module.exports = function Factory(uid, opts) {
         });
     },
 
-    sendRequest(uid, route, method, body) {
-      return this.sendMessage(uid, { type: 'request', data: { route, method, body } });
+    sendRequest(uid, request) {
+      const promise = Q.defer();
+
+      const callback = (rid, body) => {
+        if (rid === id) {
+          this.removeListener('response', callback);
+          promise.resolve(body);
+        }
+      }
+
+      this.sendMessage(uid, { type: 'request', data: request })
+        .then((id) => {
+          this.on('response', callback);
+        });
+
+      return promise;
     },
 
     processKeepAlives() {
@@ -147,6 +167,8 @@ module.exports = function Factory(uid, opts) {
         this.processKeepAlives();
       }, 100);
 
+      this.emit('started');
+
       // setInterval(() => {
       //   this.friends.forEach(({ uid }) => this.sendMessage(uid, 'ping'));
       // }, 2000);
@@ -171,6 +193,8 @@ module.exports = function Factory(uid, opts) {
         });
     }
   };
+
+  return Object.assign(self, EventEmitter.prototype);
 
   return self;
 };

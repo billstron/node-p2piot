@@ -16,8 +16,11 @@ client(uid, opts)
     a.addFriend('b12345');
 
     setInterval(() => {
-      client.sendRequest('b12345', '/ping', 'GET');
-    }, 1000)
+      a.sendRequest('b12345', { route: '/ping', method: 'GET' })
+        .then((reply) => {
+          console.log(reply);
+        });
+    }, 20000)
   })
   .catch((error) => {
     console.error(error);
