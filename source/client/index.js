@@ -51,9 +51,11 @@ module.exports = function Factory(uid, opts) {
         const text = buffer.toString('utf8');
 
         this.emit('incoming', friend.uid, msg);
+        console.log('receiving', text);
         const decipher = crypto.createDecipher(algorithm, friend.key);
         let deciphered = decipher.update(text, outputEncoding, inputEncoding);
         deciphered += decipher.final(inputEncoding);
+        console.log('deciphered', deciphered);
         const msg = JSON.parse(deciphered);
 
         const { type, id, data } = msg;
@@ -99,11 +101,13 @@ module.exports = function Factory(uid, opts) {
           .then(reply => reply.data);
       })
         .then((address) => {
+          console.log('strating cypher');
           const cipher = crypto.createCipher(algorithm, friend.key);
-          let ciphered = cipher.update(text, inputEncoding, outputEncoding);
+          let ciphered = cipher.update(message, inputEncoding, outputEncoding);
           ciphered += cipher.final(outputEncoding);
           friend.address = address;
           const { port, host } = address.public;
+          console.log('sending', ciphered);
           this.socket.send(ciphered, 0, ciphered.length, port, host, (error) => {
             if (error) {
               return console.log(`error sending message to ${uid}`, error);
@@ -111,7 +115,8 @@ module.exports = function Factory(uid, opts) {
             this.emit('outgoing', friend.uid, toSend);
           });
           return this.id;
-        });
+        })
+        .catch((err) => console.error(err))
     },
 
     handleKeepAlive(uid, rid) {
