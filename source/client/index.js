@@ -50,7 +50,7 @@ module.exports = function Factory(uid, opts) {
       if (friend) {
         const text = buffer.toString('utf8');
 
-        this.emit('incoming', friend.uid, msg);
+        this.emit('incoming', friend.uid, text);
         console.log('receiving', text);
         const decipher = crypto.createDecipher(algorithm, friend.key);
         let deciphered = decipher.update(text, outputEncoding, inputEncoding);
