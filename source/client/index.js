@@ -77,7 +77,10 @@ module.exports = function Factory(uid, opts) {
       const response = (status, body) => {
         this.sendMessage(uid, { type: 'response', rid, data });
       };
-      this.router({ route, method, body, uid }, response);
+      if (typeof this.router == 'function') {
+        this.router({ route, method, body, uid }, response);
+      }
+      response(404, { msg: 'not found' });
     },
 
     sendMessage(uid, data) {
