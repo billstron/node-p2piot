@@ -107,7 +107,8 @@ module.exports = function Factory(uid, opts) {
             }
             console.log(`message sent to ${host}:${port}`);
           });
-        })
+          return this.id;
+        });
     },
 
     sendIsAlive(uid, rid) {
