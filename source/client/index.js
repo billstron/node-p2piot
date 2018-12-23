@@ -7,7 +7,7 @@ const crypto = require('crypto');
 
 const algorithm = 'aes256';
 const inputEncoding = 'utf8';
-const outputEncoding = 'utf8';
+const outputEncoding = 'hex';
 
 module.exports = function Factory(uid, opts) {
   const DT_RESOLUTION = 300000;  // 5 minutes
