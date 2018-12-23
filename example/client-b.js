@@ -27,6 +27,6 @@ b.router = function router(req, response) {
   }
 };
 
-a.on('online', (uid) => {
+b.on('online', (uid) => {
   console.log(`online: ${uid}`);
 });
