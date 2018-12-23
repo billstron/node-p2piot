@@ -45,9 +45,12 @@ module.exports = function Factory(uid, opts) {
       if (friend) {
         const msg = JSON.parse(buffer.toString('utf8'));
         const { type, id, data } = msg;
+        let method;
+        let route;
+        let body;
         switch(type) {
           case 'request':
-            const { method, route, body } = data;
+            ({ method, route, body } = data);
             console.log(`${friend.uid}: ${method}, ${route}, ${body}`);
             this.handleRequest(friend.uid, id, data);
             break;
@@ -56,12 +59,12 @@ module.exports = function Factory(uid, opts) {
             this.sendIsAlive(friend.uid, id);
             break;
           case 'response':
-            const { rid, status, body } = data;
+            ({ rid, status, body } = data);
             console.log(`${friend.uid}: response ${rid}`);
             this.emit('response', rid, { status, body });
             break;
           case 'is-alive':
-            const { rid } = data;
+            ({ rid } = data);
             console.log(`${friend.uid}: is-alive, ${rid}`);
             friend.online = true;
             friend.lastTime = Date.now();
