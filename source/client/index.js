@@ -75,7 +75,7 @@ module.exports = function Factory(uid, opts) {
     handleRequest(uid, id, data) {
       const { route, method, body } = data;
       const response = (status, body) => {
-        this.sendMessage(uid, { type: 'response', rid, data });
+        this.sendMessage(uid, { type: 'response', id, data: { status, body } });
       };
       if (typeof this.router == 'function') {
         this.router({ route, method, body, uid }, response);
