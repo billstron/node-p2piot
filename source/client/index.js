@@ -49,6 +49,7 @@ module.exports = function Factory(uid, opts) {
           case 'request':
             const { method, route, body } = data;
             console.log(`${friend.uid}: ${method}, ${route}, ${body}`);
+            this.handleRequest(friend.uid, id, data);
             break;
           case 'keep-alive':
             console.log(`${friend.uid}: keep-alive, ${id}`);
@@ -69,6 +70,14 @@ module.exports = function Factory(uid, opts) {
             break;
         }
       }
+    },
+
+    handleRequest(uid, id, data) {
+      const { route, method, body } = data;
+      const response = (status, body) => {
+        this.sendMessage(uid, { type: 'response', rid, data });
+      };
+      this.router({ route, method, body, uid }, response);
     },
 
     sendMessage(uid, data) {
@@ -111,7 +120,7 @@ module.exports = function Factory(uid, opts) {
     },
 
     sendRequest(uid, request) {
-      const promise = Q.defer();
+      const def = Q.defer();
 
       const callback = (rid, body) => {
         if (rid === id) {
@@ -125,7 +134,7 @@ module.exports = function Factory(uid, opts) {
           this.on('response', callback);
         });
 
-      return promise;
+      return def.promise;
     },
 
     processKeepAlives() {
