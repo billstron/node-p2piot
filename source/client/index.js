@@ -44,7 +44,7 @@ module.exports = function Factory(uid, opts) {
       });
       if (friend) {
         const msg = JSON.parse(buffer.toString('utf8'));
-        const { type, id, data, rid } = msg;
+        const { type, id, data } = msg;
         switch(type) {
           case 'request':
             const { method, route, body } = data;
@@ -56,10 +56,12 @@ module.exports = function Factory(uid, opts) {
             this.sendIsAlive(friend.uid, id);
             break;
           case 'response':
+            const { rid, status, body } = data;
             console.log(`${friend.uid}: response ${rid}`);
-            this.emit('response', rid, data);
+            this.emit('response', rid, { status, body });
             break;
           case 'is-alive':
+            const { rid } = data;
             console.log(`${friend.uid}: is-alive, ${rid}`);
             friend.online = true;
             friend.lastTime = Date.now();
@@ -70,17 +72,6 @@ module.exports = function Factory(uid, opts) {
             break;
         }
       }
-    },
-
-    handleRequest(uid, id, data) {
-      const { route, method, body } = data;
-      const response = (status, body) => {
-        this.sendMessage(uid, { type: 'response', id, data: { status, body } });
-      };
-      if (typeof this.router == 'function') {
-        this.router({ route, method, body, uid }, response);
-      }
-      response(404, { msg: 'not found' });
     },
 
     sendMessage(uid, data) {
@@ -112,7 +103,7 @@ module.exports = function Factory(uid, opts) {
     },
 
     sendIsAlive(uid, rid) {
-      return this.sendMessage(uid, { type: 'is-alive', rid });
+      return this.sendMessage(uid, { type: 'is-alive', data: { rid } });
     },
 
     sendKeepAlive(uid) {
@@ -123,7 +114,7 @@ module.exports = function Factory(uid, opts) {
         });
     },
 
-    sendRequest(uid, request) {
+    request(uid, request) {
       const def = Q.defer();
 
       this.sendMessage(uid, { type: 'request', data: request })
@@ -138,6 +129,17 @@ module.exports = function Factory(uid, opts) {
         });
 
       return def.promise;
+    },
+
+    handleRequest(uid, rid, data) {
+      const { route, method, body } = data;
+      const response = (status, body) => {
+        this.sendMessage(uid, { type: 'response', data: { rid, status, body } });
+      };
+      if (typeof this.router == 'function') {
+        this.router({ route, method, body, uid }, response);
+      }
+      response(404, { msg: 'not found' });
     },
 
     processKeepAlives() {
