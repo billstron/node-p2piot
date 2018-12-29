@@ -109,7 +109,7 @@ module.exports = function Factory(uid, opts) {
         .then((address) => {
           friend.address = address;
           const message = JSON.stringify(toSend);
-          const cipher = crypto.createCipher(algorithm, friend.key);
+          const cipher = crypto.createCipher(algorithm, friend.secret);
           let ciphered = cipher.update(message, inputEncoding, outputEncoding);
           ciphered += cipher.final(outputEncoding);
           const { port, host } = friend.address.public;
@@ -290,7 +290,7 @@ module.exports = function Factory(uid, opts) {
     },
 
     handleEncryptedMessage(friend, text) {
-      const decipher = crypto.createDecipher(algorithm, friend.key);
+      const decipher = crypto.createDecipher(algorithm, friend.secret);
       let deciphered = decipher.update(text, outputEncoding, inputEncoding);
       deciphered += decipher.final(inputEncoding);
       const msg = JSON.parse(deciphered);
