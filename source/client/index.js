@@ -220,7 +220,7 @@ module.exports = function Factory(uid, opts) {
               }
               const [code, secret] = toVerify.split(' ');
               console.log('friend.secret', friend.secret);
-              console.log(code, secret);
+              console.log(code, secret, secret.length);
               if (code && code === 'secret') {
                 if (secret.length === 32 && friend.secret == null) {
                   console.log('0');
