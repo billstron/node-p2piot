@@ -10,7 +10,7 @@ const inputEncoding = 'utf8';
 const outputEncoding = 'hex';
 
 module.exports = function Factory(uid, opts) {
-  const DT_RESOLUTION = 300000;  // 5 minutes
+  const DT_RESOLUTION = 300000; // 5 minutes
   const DT_KEEP_ALIVE = 60000;
   const DT_OFFLINE_RETRY = 2000;
 
@@ -27,7 +27,11 @@ module.exports = function Factory(uid, opts) {
 
     updateResolution(value) {
       return Q.fcall(() => {
-        if (this.address && this.address.public.host == value.public.host && this.address.public.port == value.public.port) {
+        if (
+          this.address
+          && this.address.public.host === value.public.host
+          && this.address.public.port === value.public.port
+        ) {
           return null;
         }
         return request
