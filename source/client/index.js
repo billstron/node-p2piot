@@ -266,6 +266,7 @@ module.exports = function Factory(uid, opts) {
                 this.send(msg, port, host);
               } else if (toVerify && toVerify === 'finalize confirmed') {
                 friend.state = 'bound';
+                friend.online = true;
                 this.sendKeepAlive(friend.uid);
               } else {
                 friend.state = 'failure';
