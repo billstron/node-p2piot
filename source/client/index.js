@@ -410,7 +410,7 @@ module.exports = function Factory(uid, opts) {
 
       setInterval(() => {
         this.processKeepAlives();
-      }, 1000);
+      }, 10000);
 
       this.emit('connected');
     },
