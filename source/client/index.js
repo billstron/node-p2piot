@@ -219,6 +219,7 @@ module.exports = function Factory(uid, opts) {
                 // log this later
               }
               const [code, secret] = toVerify;
+              console.log(code, secret);
               if (code && code === 'secret') {
                 if (secret.length === 32 && friend.secret == null) {
                   console.log('0');
@@ -237,12 +238,15 @@ module.exports = function Factory(uid, opts) {
                   const msg = `bind ${this.signAndEncrypt(`secret ${friend.secret}`, friend.publicKey)}`;
                   this.send(msg, port, host);
                 } else {
+                  console.log('ERROR: improper secret');
                   friend.state = 'failure';
                 }
               } else {
+                console.log('ERROR: improper code');
                 friend.state = 'failure';
               }
             } else {
+              console.log('ERROR: no text');
               friend.state = 'failure';
             }
             break;
