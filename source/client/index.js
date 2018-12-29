@@ -218,7 +218,7 @@ module.exports = function Factory(uid, opts) {
               } catch (err) {
                 // log this later
               }
-              const [code, secret] = toVerify;
+              const [code, secret] = toVerify.split(' ');
               console.log(code, secret);
               if (code && code === 'secret') {
                 if (secret.length === 32 && friend.secret == null) {
