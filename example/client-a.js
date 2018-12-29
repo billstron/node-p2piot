@@ -10,7 +10,7 @@ const opts = {
   },
 };
 
-const a = client(uid, opts)
+const a = client(uid, opts);
 a.connect();
 a.once('connected', () => {
   console.log('connected');

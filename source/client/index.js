@@ -2,7 +2,6 @@ const Q = require('q');
 const stun = require('vs-stun');
 const request = require('axios');
 const EventEmitter = require('events');
-const util = require('util');
 const crypto = require('crypto');
 
 const algorithm = 'aes256';
@@ -36,7 +35,7 @@ module.exports = function Factory(uid, opts) {
         }
         return request
           .post(`${locationServer}/${uid}`, value)
-          .then((reply) => {
+          .then(() => {
             console.log('location updated', value);
             this.address = value;
           });
@@ -47,9 +46,10 @@ module.exports = function Factory(uid, opts) {
     },
 
     onMessage(buffer, rinfo) {
-      const { address, port } = rinfo;
       const friend = this.friends.find(({ address }) => {
-        return address && address.public.host === rinfo.address && address.public.port === rinfo.port;
+        return address
+          && address.public.host === rinfo.address
+          && address.public.port === rinfo.port;
       });
       if (friend) {
         const text = buffer.toString('utf8');
@@ -61,13 +61,11 @@ module.exports = function Factory(uid, opts) {
         const msg = JSON.parse(deciphered);
 
         const { type, id, data } = msg;
-        let method;
-        let route;
         let body;
-        let state;
-        switch(type) {
+        let status;
+        let rid;
+        switch (type) {
           case 'request':
-            ({ method, route, body } = data);
             this.handleRequest(friend.uid, id, data);
             break;
           case 'response':
@@ -94,7 +92,7 @@ module.exports = function Factory(uid, opts) {
       const toSend = Object.assign({}, data, { id: this.id });
       const message = JSON.stringify(toSend);
       return Q.fcall(() => {
-        friend = this.friends.find(friend => friend.uid === uid);
+        friend = this.friends.find(f => f.uid === uid);
         if (friend.online) {
           return friend.address;
         }
@@ -112,15 +110,15 @@ module.exports = function Factory(uid, opts) {
             if (error) {
               return console.log(`error sending message to ${uid}`, error);
             }
-            this.emit('outgoing', friend.uid, toSend);
+            return this.emit('outgoing', friend.uid, toSend);
           });
           return this.id;
         })
-        .catch((err) => console.error(err))
+        .catch(err => console.error(err));
     },
 
     handleKeepAlive(uid, rid) {
-      const friend = this.friends.find(friend => friend.uid === uid);
+      const friend = this.friends.find(f => f.uid === uid);
       friend.online = true;
       friend.lastTime = Date.now() - DT_OFFLINE_RETRY;
       friend.tryCount = 0;
@@ -131,7 +129,7 @@ module.exports = function Factory(uid, opts) {
     sendKeepAlive(uid) {
       this.sendMessage(uid, { type: 'keep-alive' })
         .then((id) => {
-          const friend = this.friends.find(friend => friend.uid === uid);
+          const friend = this.friends.find(f => f.uid === uid);
           friend.online = false;
 
           const callback = (rid, uid) => {
@@ -140,7 +138,7 @@ module.exports = function Factory(uid, opts) {
               friend.online = true;
               friend.lastTime = Date.now();
               friend.tryCount = 0;
-              this.emit('online', friend.uid);
+              this.emit('online', uid);
             }
           };
           this.on('is-alive', callback);
@@ -177,7 +175,7 @@ module.exports = function Factory(uid, opts) {
     },
 
     processKeepAlives() {
-      const send = this.friends.filter(({ online = false, lastTime = 0, tryCount = 0 }) => {
+      const send = this.friends.filter(({ online = false, lastTime = 0 }) => {
         if (online) {
           return (lastTime + DT_KEEP_ALIVE) < Date.now();
         }
@@ -188,7 +186,7 @@ module.exports = function Factory(uid, opts) {
         const { tryCount = 0 } = friend;
         friend.tryCount = tryCount + 1;
         friend.lastTime = Date.now();
-        return this.sendKeepAlive(friend.uid)
+        return this.sendKeepAlive(friend.uid);
       }));
     },
 
@@ -219,7 +217,7 @@ module.exports = function Factory(uid, opts) {
     },
 
     close() {
-      socket.close();
+      this.socket.close();
       return clearInterval(this.resolver);
     },
 
@@ -235,7 +233,7 @@ module.exports = function Factory(uid, opts) {
         .then(() => {
           return this;
         });
-    }
+    },
   };
 
   return Object.assign(self, EventEmitter.prototype);

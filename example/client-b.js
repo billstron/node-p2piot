@@ -1,4 +1,4 @@
-require('dotenv').config()
+require('dotenv').config();
 const { client } = require('../');
 
 const uid = 'b12345';
@@ -11,15 +11,15 @@ const opts = {
 };
 
 const b = client(uid, opts);
-b.connect()
+b.connect();
 b.once('connected', () => {
   console.log('connected');
 });
 
 b.addFriend('a12345', 'oiuytertyukjhg');
 b.router = function router(req, response) {
-  const { route, method, body } = req;
-  switch(route) {
+  const { route, method, body } = req; // eslint-disable-line no-unused-vars
+  switch (route) {
     case '/ping':
       return response(200, { msg: 'pong' });
     default:

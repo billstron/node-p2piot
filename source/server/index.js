@@ -24,7 +24,7 @@ module.exports = function Factory(config) {
           return res.json(JSON.parse(out));
         }
 
-        res.status(404).json({ msg: 'not found' });
+        return res.status(404).json({ msg: 'not found' });
       })
       .catch((err) => {
         res.status(500).json(err);
