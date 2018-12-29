@@ -267,6 +267,7 @@ module.exports = function Factory(uid, opts) {
             }
             break;
         }
+        console.log('next', friend.state);
       });
     },
 
