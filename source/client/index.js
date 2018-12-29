@@ -117,8 +117,7 @@ module.exports = function Factory(uid, opts) {
             return this.emit('outgoing', friend.uid, toSend);
           });
           return this.id;
-        })
-        .catch(err => console.error(err));
+        });
     },
 
     onMessage(buffer, rinfo) {
@@ -150,6 +149,7 @@ module.exports = function Factory(uid, opts) {
         const { state } = friend;
         switch (state) {
           default:
+            console.log('binding default', text);
             if (text === 'bind start') {
               friend.state = 'verify';
               friend.verify = null;
@@ -159,6 +159,7 @@ module.exports = function Factory(uid, opts) {
             this.send('bind start', port, host);
             break;
           case 'start':
+            console.log('binding start', text);
             if (text === 'bind start') {
               friend.state = 'verify';
               friend.verify = {
@@ -173,6 +174,7 @@ module.exports = function Factory(uid, opts) {
             }
             break;
           case 'verify':
+            console.log('binding verify', text);
             if (text) {
               let toVerify;
               try {
@@ -202,6 +204,7 @@ module.exports = function Factory(uid, opts) {
             }
             break;
           case 'exchange':
+            console.log('binding exchange', text);
             if (text) {
               let toVerify;
               try {
@@ -233,6 +236,7 @@ module.exports = function Factory(uid, opts) {
             }
             break;
           case 'finalize':
+            console.log('binding finalize', text);
             if (text) {
               let toVerify;
               try {
@@ -324,6 +328,9 @@ module.exports = function Factory(uid, opts) {
             }
           };
           this.on('is-alive', callback);
+        })
+        .catch((err) => {
+          console.error(err);
         });
     },
 
@@ -393,7 +400,7 @@ module.exports = function Factory(uid, opts) {
 
       setInterval(() => {
         this.processKeepAlives();
-      }, 100);
+      }, 1000);
 
       this.emit('connected');
     },
@@ -411,10 +418,6 @@ module.exports = function Factory(uid, opts) {
         })
         .then(() => {
           return this.init();
-        })
-        .then(() => {
-          const promises = this.friends.map(({ uid }) => this.connectToFriend(uid));
-          return Q.all(promises);
         })
         .then(() => {
           return this;
