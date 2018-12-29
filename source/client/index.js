@@ -196,7 +196,7 @@ module.exports = function Factory(uid, opts) {
                   this.send(msg, port, host);
                 } else if (Number(time) === friend.verify.time && Number(index) === (friend.verify.index + 1)) {
                   friend.state = 'exchange';
-                  friend.secret = crypto.randomBytes(32).toString('hex');
+                  friend.secret = crypto.randomBytes(16).toString('hex');
                   const msg = `bind ${this.signAndEncrypt(`secret ${friend.secret}`, friend.publicKey)}`;
                   this.send(msg, port, host);
                 } else {
@@ -224,7 +224,7 @@ module.exports = function Factory(uid, opts) {
               if (code && code === 'secret') {
                 if (secret.length === 32 && friend.secret == null) {
                   console.log('0');
-                  friend.secret = `${secret}${crypto.randomBytes(32).toString('hex')}`;
+                  friend.secret = `${secret}${crypto.randomBytes(16).toString('hex')}`;
                   const msg = `bind ${this.signAndEncrypt(`secret ${friend.secret}`, friend.publicKey)}`;
                   this.send(msg, port, host);
                 } else if (secret.length === 64 && friend.secret === secret) {
