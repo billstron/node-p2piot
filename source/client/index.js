@@ -205,6 +205,8 @@ module.exports = function Factory(uid, opts) {
               } else {
                 friend.state = 'failure';
               }
+            } else {
+              friend.state = 'failure';
             }
             break;
           case 'exchange':
@@ -237,6 +239,8 @@ module.exports = function Factory(uid, opts) {
               } else {
                 friend.state = 'failure';
               }
+            } else {
+              friend.state = 'failure';
             }
             break;
           case 'finalize':
@@ -258,6 +262,8 @@ module.exports = function Factory(uid, opts) {
               } else {
                 friend.state = 'failure';
               }
+            } else {
+              friend.state = 'failure';
             }
             break;
         }
