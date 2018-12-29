@@ -391,9 +391,9 @@ module.exports = function Factory(uid, opts) {
           });
       }, DT_RESOLUTION);
 
-      // setInterval(() => {
-      //   this.processKeepAlives();
-      // }, 100);
+      setInterval(() => {
+        this.processKeepAlives();
+      }, 100);
 
       this.emit('connected');
     },
