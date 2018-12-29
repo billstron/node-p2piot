@@ -68,9 +68,10 @@ module.exports = function Factory(uid, opts) {
     },
 
     connectToFriend(fuid) {
+      console.log('connectToFriend');
       let friend;
       return Q.fcall(() => {
-        friend = this.friend.find(({ uid }) => uid === fuid);
+        friend = this.friends.find(({ uid }) => uid === fuid);
         if (!friend) {
           throw new Error('Friend not found');
         }
@@ -87,8 +88,10 @@ module.exports = function Factory(uid, opts) {
             return next;
           }, null);
           friend.address = address;
+          console.log('friend address', address);
           return this.handleBinding(friend.uid);
-        });
+        })
+        .catch(err => console.error(err));
     },
 
     sendMessage(uid, data) {
@@ -139,9 +142,10 @@ module.exports = function Factory(uid, opts) {
     },
 
     handleBinding(fuid, text = '') {
+      console.log('handleBinding');
       let friend;
       return Q.fcall(() => {
-        friend = this.friend.find(({ uid }) => uid === fuid);
+        friend = this.friends.find(({ uid }) => uid === fuid);
         if (!friend) {
           throw new Error('Friend not found');
         }
