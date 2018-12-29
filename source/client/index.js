@@ -221,14 +221,17 @@ module.exports = function Factory(uid, opts) {
               const [code, secret] = toVerify;
               if (code && code === 'secret') {
                 if (secret.length === 32 && friend.secret == null) {
+                  console.log('0');
                   friend.secret = `${secret}${crypto.randomBytes(32).toString('hex')}`;
                   const msg = `bind ${this.signAndEncrypt(`secret ${friend.secret}`, friend.publicKey)}`;
                   this.send(msg, port, host);
                 } else if (secret.length === 64 && friend.secret === secret) {
+                  console.log('1');
                   friend.state = 'finalize';
                   const msg = `bind ${this.signAndEncrypt('finalize', friend.publicKey)}`;
                   this.send(msg, port, host);
                 } else if (secret.length === 64 && secret.indexOf(friend.secret) === 0) {
+                  console.log('2');
                   friend.state = 'finalize';
                   friend.secret = secret;
                   const msg = `bind ${this.signAndEncrypt(`secret ${friend.secret}`, friend.publicKey)}`;
