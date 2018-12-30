@@ -9,6 +9,10 @@ const algorithm = 'aes256';
 const inputEncoding = 'utf8';
 const outputEncoding = 'hex';
 
+if (process.env.DEBUG !== 'true') {
+  console.debug = () => {};
+}
+
 module.exports = function Factory(uid, opts) {
   const DT_RESOLUTION = 300000;
   const DT_KEEP_ALIVE = 60000;
@@ -31,7 +35,8 @@ module.exports = function Factory(uid, opts) {
     sendRaw(msg, port, host) {
       this.socket.send(msg, 0, msg.length, port, host, (error) => {
         if (error) {
-          return console.log(`error sending message to ${uid}`, error);
+          console.debug(`error sending message to ${uid}`, error);
+          return this.emit('error', `error sending message to ${uid}`, error);
         }
         return this.emit('outgoing:raw', host, port, msg);
       });
@@ -69,11 +74,12 @@ module.exports = function Factory(uid, opts) {
         return request.post(`${locationServer}/${uid}`, addresses);
       })
         .then(() => {
-          console.log('location updated', value);
+          console.debug('location updated', value);
           this.address = value;
         })
         .catch((err) => {
-          console.log('location update failed', err);
+          console.debug('location update failed', err);
+          this.emit('error', 'location update failed', err);
         });
     },
 
@@ -96,7 +102,10 @@ module.exports = function Factory(uid, opts) {
           friend.address = address;
           return this.handleBinding(friend.uid);
         })
-        .catch(err => console.error(err));
+        .catch((err) => {
+          console.debug(err);
+          this.emit('error', err);
+        });
     },
 
     sendMessage(uid, data) {
@@ -160,7 +169,7 @@ module.exports = function Factory(uid, opts) {
       switch (state) {
         default:
         case 'start':
-          console.log('state: start', data);
+          console.debug('state: start', data);
           friend.secret = null;
           if (data.length > 0 && data[0] === 'continue') {
             friend.verify = {
@@ -176,7 +185,7 @@ module.exports = function Factory(uid, opts) {
           }
           break;
         case 'verify':
-          console.log('state: verify', data);
+          console.debug('state: verify', data);
           ([time, index] = data);
           if (friend.verify == null) {
             friend.secret = null;
@@ -194,7 +203,7 @@ module.exports = function Factory(uid, opts) {
           }
           break;
         case 'exchange':
-          console.log('state: exchange', data);
+          console.debug('state: exchange', data);
           ([secret] = data);
           if (secret.length === 32 && friend.secret == null) {
             friend.secret = `${secret}${crypto.randomBytes(16).toString('hex')}`;
@@ -210,7 +219,7 @@ module.exports = function Factory(uid, opts) {
           }
           break;
         case 'finalize':
-          console.log('state: finalize', data);
+          console.debug('state: finalize', data);
           if (data.length === 0) {
             const msg = `bind ${this.signAndEncrypt('finalize confirmed', friend.publicKey)}`;
             this.sendRaw(msg, port, host);
@@ -252,7 +261,7 @@ module.exports = function Factory(uid, opts) {
           this.emit('is-alive', rid, friend.uid);
           break;
         default:
-          console.log(`${friend.uid}:`, msg);
+          console.debug(`${friend.uid}:`, msg);
           break;
       }
     },
@@ -267,7 +276,7 @@ module.exports = function Factory(uid, opts) {
       friend.tryCount = 0;
       return this.sendMessage(uid, { type: 'is-alive', data: { rid } })
         .catch((err) => {
-          console.log(err);
+          console.debug(err);
         });
     },
 
@@ -311,7 +320,7 @@ module.exports = function Factory(uid, opts) {
             this.emit('online', friend.uid, false);
           }
           friend.tryCount += 1;
-          console.error(err);
+          console.debug(err);
         });
     },
 
@@ -382,6 +391,7 @@ module.exports = function Factory(uid, opts) {
           .catch((error) => {
             console.error('Error with resolution', error);
             console.error('closing');
+            this.emit('error', 'Error with resolution', error);
             this.close();
           });
       }, DT_RESOLUTION);
