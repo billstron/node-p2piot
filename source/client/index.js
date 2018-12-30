@@ -5,6 +5,8 @@ const EventEmitter = require('events');
 const crypto = require('crypto');
 const NodeRsa = require('node-rsa');
 
+const getLocalIps = require('./get-local-ips');
+
 const algorithm = 'aes256';
 const inputEncoding = 'utf8';
 const outputEncoding = 'hex';
@@ -386,6 +388,8 @@ module.exports = function Factory(uid, opts) {
       this.resolver = setInterval(() => {
         Q.ninvoke(stun, 'resolve', this.socket, stunServer)
           .then((value) => {
+            const localIps = getLocalIps();
+            value.local.host = localIps[0].address;
             return this.updateResolution(value);
           })
           .catch((error) => {
@@ -413,6 +417,8 @@ module.exports = function Factory(uid, opts) {
       return Q.ninvoke(stun, 'connect', stunServer)
         .then((value) => {
           this.socket = value;
+          const localIps = getLocalIps();
+          this.socket.stun.local.host = localIps[0].address;
           return this.updateResolution(this.socket.stun);
         })
         .then(() => {
