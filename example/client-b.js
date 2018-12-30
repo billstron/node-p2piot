@@ -2,12 +2,12 @@ require('dotenv').config();
 const fs = require('fs');
 const { client } = require('../');
 
-const uid = process.env.UID;
-const privateKeyFile = process.env.PRIVATE_CERT;
+const uid = process.env.B_UID;
+const privateKeyFile = process.env.B_PRIVATE_CERT;
 const privateKey = fs.readFileSync(privateKeyFile).toString();
 
-const friendUid = process.env.FRIEND_UID;
-const friendPublicKeyFile = process.env.FRIEND_PUBLIC_KEY;
+const friendUid = process.env.A_UID;
+const friendPublicKeyFile = process.env.A_PUBLIC_KEY;
 const friendPublicKey = fs.readFileSync(friendPublicKeyFile).toString();
 
 const opts = {

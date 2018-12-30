@@ -69,6 +69,8 @@ module.exports = function Factory(uid, opts) {
           this.address
           && this.address.public.host === value.public.host
           && this.address.public.port === value.public.port
+          && this.address.local.host === value.local.host
+          && this.address.local.port === value.local.port
         ) {
           return null;
         }
@@ -102,7 +104,9 @@ module.exports = function Factory(uid, opts) {
             return next;
           }, null);
           friend.address = address;
-          return this.handleBinding(friend.uid);
+          this.handleBinding(friend.uid, 'public');
+          this.handleBinding(friend.uid, 'local');
+          return null;
         })
         .catch((err) => {
           console.debug(err);
@@ -117,18 +121,18 @@ module.exports = function Factory(uid, opts) {
       return Q.fcall(() => {
         friend = this.friends.find(f => f.uid === uid);
         if (friend.online) {
-          return friend.address;
+          return friend;
         }
         this.connectToFriend(friend.uid);
         throw new Error('Connection not alive');
       })
-        .then((address) => {
-          friend.address = address;
+        .then((friend) => {
+          const { prefer } = friend;
           const message = JSON.stringify(toSend);
-          const cipher = crypto.createCipher(algorithm, friend.secret);
+          const cipher = crypto.createCipher(algorithm, friend.address[prefer].secret);
           let ciphered = cipher.update(message, inputEncoding, outputEncoding);
           ciphered += cipher.final(outputEncoding);
-          const { port, host } = friend.address.public;
+          const { port, host } = friend.address[prefer];
           this.sendRaw(ciphered, port, host);
           return this.id;
         });
@@ -137,22 +141,32 @@ module.exports = function Factory(uid, opts) {
     onMessage(buffer, rinfo) {
       const friend = this.friends.find(({ address }) => {
         return address
-          && address.public.host === rinfo.address
-          && address.public.port === rinfo.port;
+          && (
+            (
+              address.public.host === rinfo.address
+              && address.public.port === rinfo.port
+            )
+            || (
+              address.local.host === rinfo.address
+              && address.local.port === rinfo.port
+            )
+          );
       });
       if (friend) {
+        const preferPublic = friend.address.public.host === rinfo.address
+          && friend.address.public.port === rinfo.port;
         const text = buffer.toString('utf8');
         this.emit('incoming', friend.uid, text);
 
         if (text.indexOf('bind') === 0) {
-          return this.handleBinding(friend.uid, text);
+          return this.handleBinding(friend.uid, preferPublic ? 'public' : 'local', text);
         }
         return this.handleEncrypted(friend.uid, text);
       }
       return null;
     },
 
-    handleBinding(fuid, text = 'bind start') {
+    handleBinding(fuid, address, text = 'bind start') {
       const friend = this.friends.find(({ uid }) => uid === fuid);
       if (!friend) {
         throw new Error('Friend not found');
@@ -164,7 +178,7 @@ module.exports = function Factory(uid, opts) {
       if (state !== 'start') {
         [state, ...data] = this.decryptAndVerify(state, friend.publicKey).split(' ');
       }
-      const { port, host } = friend.address.public;
+      const { port, host } = friend.address[address];
       let time;
       let index;
       let secret;
@@ -172,63 +186,65 @@ module.exports = function Factory(uid, opts) {
         default:
         case 'start':
           console.debug('state: start', data);
-          friend.secret = null;
+          friend.address[address].secret = null;
           if (data.length > 0 && data[0] === 'continue') {
-            friend.verify = {
+            friend.address[address].verify = {
               time: Date.now(),
               index: 0,
             };
-            const toVerify = `verify ${friend.verify.time} ${friend.verify.index}`;
+            const toVerify = `verify ${friend.address[address].verify.time} ${friend.address[address].verify.index}`;
             const msg = `bind ${this.signAndEncrypt(toVerify, friend.publicKey)}`;
             this.sendRaw(msg, port, host);
           } else {
-            friend.verify = null;
+            friend.address[address].verify = null;
             this.sendRaw('bind start continue', port, host);
           }
           break;
         case 'verify':
           console.debug('state: verify', data);
           ([time, index] = data);
-          if (friend.verify == null) {
-            friend.secret = null;
-            friend.verify = {
+          if (friend.address[address].verify == null) {
+            friend.address[address].secret = null;
+            friend.address[address].verify = {
               time: Number(time),
               index: Number(index) + 1,
             };
-            const toVerify = `verify ${friend.verify.time} ${friend.verify.index}`;
+            const toVerify = `verify ${friend.address[address].verify.time} ${friend.address[address].verify.index}`;
             const msg = `bind ${this.signAndEncrypt(toVerify, friend.publicKey)}`;
             this.sendRaw(msg, port, host);
-          } else if (Number(time) === friend.verify.time && Number(index) === (friend.verify.index + 1)) {
-            friend.secret = crypto.randomBytes(16).toString('hex');
-            const msg = `bind ${this.signAndEncrypt(`exchange ${friend.secret}`, friend.publicKey)}`;
+          } else if (Number(time) === friend.address[address].verify.time && Number(index) === (friend.address[address].verify.index + 1)) {
+            friend.address[address].secret = crypto.randomBytes(16).toString('hex');
+            const msg = `bind ${this.signAndEncrypt(`exchange ${friend.address[address].secret}`, friend.publicKey)}`;
             this.sendRaw(msg, port, host);
           }
           break;
         case 'exchange':
           console.debug('state: exchange', data);
           ([secret] = data);
-          if (secret.length === 32 && friend.secret == null) {
-            friend.secret = `${secret}${crypto.randomBytes(16).toString('hex')}`;
-            const msg = `bind ${this.signAndEncrypt(`exchange ${friend.secret}`, friend.publicKey)}`;
+          if (secret.length === 32 && friend.address[address].secret == null) {
+            friend.address[address].secret = `${secret}${crypto.randomBytes(16).toString('hex')}`;
+            const msg = `bind ${this.signAndEncrypt(`exchange ${friend.address[address].secret}`, friend.publicKey)}`;
             this.sendRaw(msg, port, host);
-          } else if (secret.length === 64 && friend.secret === secret) {
+          } else if (secret.length === 64 && friend.address[address].secret === secret) {
             const msg = `bind ${this.signAndEncrypt('finalize', friend.publicKey)}`;
             this.sendRaw(msg, port, host);
-          } else if (secret.length === 64 && secret.indexOf(friend.secret) === 0) {
-            friend.secret = secret;
-            const msg = `bind ${this.signAndEncrypt(`exchange ${friend.secret}`, friend.publicKey)}`;
+          } else if (secret.length === 64 && secret.indexOf(friend.address[address].secret) === 0) {
+            friend.address[address].secret = secret;
+            const msg = `bind ${this.signAndEncrypt(`exchange ${friend.address[address].secret}`, friend.publicKey)}`;
             this.sendRaw(msg, port, host);
           }
           break;
         case 'finalize':
           console.debug('state: finalize', data);
           if (data.length === 0) {
+            friend.prefer = address;
             const msg = `bind ${this.signAndEncrypt('finalize confirmed', friend.publicKey)}`;
             this.sendRaw(msg, port, host);
           } else if (data[0] === 'confirmed') {
             if (!friend.online) {
               this.emit('online', uid, true);
               friend.online = true;
+              friend.prefer = address;
             }
             this.sendKeepAlive(friend.uid);
           }
@@ -238,7 +254,8 @@ module.exports = function Factory(uid, opts) {
 
     handleEncrypted(fuid, text) {
       const friend = this.friends.find(({ uid }) => uid === fuid);
-      const decipher = crypto.createDecipher(algorithm, friend.secret);
+      const { prefer } = friend;
+      const decipher = crypto.createDecipher(algorithm, friend.address[prefer].secret);
       let deciphered = decipher.update(text, outputEncoding, inputEncoding);
       deciphered += decipher.final(inputEncoding);
       const msg = JSON.parse(deciphered);
