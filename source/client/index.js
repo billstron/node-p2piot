@@ -147,7 +147,7 @@ module.exports = function Factory(uid, opts) {
         throw new Error('Friend not found');
       }
       const { port, host } = friend.address.public;
-      let [bind, state, ...data] = text.split(' ');
+      let [bind, state, ...data] = text.split(' '); // eslint-disable-line prefer-const
       if (bind !== 'bind') {
         throw new Error('Improper message');
       }
@@ -176,7 +176,7 @@ module.exports = function Factory(uid, opts) {
           }
           break;
         case 'verify':
-          console.log('state: verify', text);
+          console.log('state: verify', data);
           ([time, index] = data);
           if (friend.verify == null) {
             friend.secret = null;
@@ -194,7 +194,7 @@ module.exports = function Factory(uid, opts) {
           }
           break;
         case 'exchange':
-          console.log('state: exchange', text);
+          console.log('state: exchange', data);
           ([secret] = data);
           if (secret.length === 32 && friend.secret == null) {
             friend.secret = `${secret}${crypto.randomBytes(16).toString('hex')}`;
@@ -210,7 +210,7 @@ module.exports = function Factory(uid, opts) {
           }
           break;
         case 'finalize':
-          console.log('state: finalize', text);
+          console.log('state: finalize', data);
           if (data.length === 0) {
             const msg = `bind ${this.signAndEncrypt('finalize confirmed', friend.publicKey)}`;
             this.send(msg, port, host);
@@ -362,7 +362,7 @@ module.exports = function Factory(uid, opts) {
 
       setInterval(() => {
         this.processKeepAlives();
-      }, 10000);
+      }, 100);
       this.processKeepAlives();
 
       this.emit('connected');
