@@ -10,9 +10,10 @@ const inputEncoding = 'utf8';
 const outputEncoding = 'hex';
 
 module.exports = function Factory(uid, opts) {
-  const DT_RESOLUTION = 300000; // 5 minutes
+  const DT_RESOLUTION = 300000;
   const DT_KEEP_ALIVE = 60000;
   const DT_OFFLINE_RETRY = 2000;
+  const DT_TIMEOUT = 500;
 
   const { stunServer, locationServer, privateKey } = opts;
 
@@ -26,6 +27,15 @@ module.exports = function Factory(uid, opts) {
     cert: new NodeRsa(privateKey),
 
     address: null,
+
+    sendRaw(msg, port, host) {
+      this.socket.send(msg, 0, msg.length, port, host, (error) => {
+        if (error) {
+          return console.log(`error sending message to ${uid}`, error);
+        }
+        return this.emit('outgoing:raw', host, port, msg);
+      });
+    },
 
     signAndEncrypt(msg, publicKey) {
       const pub = new NodeRsa(publicKey);
@@ -68,15 +78,11 @@ module.exports = function Factory(uid, opts) {
     },
 
     connectToFriend(fuid) {
-      console.log('connectToFriend');
-      let friend;
-      return Q.fcall(() => {
-        friend = this.friends.find(({ uid }) => uid === fuid);
-        if (!friend) {
-          throw new Error('Friend not found');
-        }
-        return request.get(`${locationServer}/${friend.uid}`);
-      })
+      const friend = this.friends.find(({ uid }) => uid === fuid);
+      if (!friend) {
+        throw new Error('Friend not found');
+      }
+      request.get(`${locationServer}/${friend.uid}`)
         .then(({ data }) => {
           const address = data.reduce((prev, encrypted) => {
             let next;
@@ -88,7 +94,6 @@ module.exports = function Factory(uid, opts) {
             return next;
           }, null);
           friend.address = address;
-          console.log('friend address', address);
           return this.handleBinding(friend.uid);
         })
         .catch(err => console.error(err));
@@ -113,12 +118,7 @@ module.exports = function Factory(uid, opts) {
           let ciphered = cipher.update(message, inputEncoding, outputEncoding);
           ciphered += cipher.final(outputEncoding);
           const { port, host } = friend.address.public;
-          this.socket.send(ciphered, 0, ciphered.length, port, host, (error) => {
-            if (error) {
-              return console.log(`error sending message to ${uid}`, error);
-            }
-            return this.emit('outgoing', friend.uid, toSend);
-          });
+          this.sendRaw(ciphered, port, host);
           return this.id;
         });
     },
@@ -136,7 +136,7 @@ module.exports = function Factory(uid, opts) {
         if (text.indexOf('bind') === 0) {
           return this.handleBinding(friend.uid, text);
         }
-        return this.handleEncryptedMessage(friend, text);
+        return this.handleEncrypted(friend.uid, text);
       }
       return null;
     },
@@ -146,7 +146,6 @@ module.exports = function Factory(uid, opts) {
       if (!friend) {
         throw new Error('Friend not found');
       }
-      const { port, host } = friend.address.public;
       let [bind, state, ...data] = text.split(' '); // eslint-disable-line prefer-const
       if (bind !== 'bind') {
         throw new Error('Improper message');
@@ -154,6 +153,7 @@ module.exports = function Factory(uid, opts) {
       if (state !== 'start') {
         [state, ...data] = this.decryptAndVerify(state, friend.publicKey).split(' ');
       }
+      const { port, host } = friend.address.public;
       let time;
       let index;
       let secret;
@@ -169,10 +169,10 @@ module.exports = function Factory(uid, opts) {
             };
             const toVerify = `verify ${friend.verify.time} ${friend.verify.index}`;
             const msg = `bind ${this.signAndEncrypt(toVerify, friend.publicKey)}`;
-            this.send(msg, port, host);
+            this.sendRaw(msg, port, host);
           } else {
             friend.verify = null;
-            this.send('bind start continue', port, host);
+            this.sendRaw('bind start continue', port, host);
           }
           break;
         case 'verify':
@@ -186,11 +186,11 @@ module.exports = function Factory(uid, opts) {
             };
             const toVerify = `verify ${friend.verify.time} ${friend.verify.index}`;
             const msg = `bind ${this.signAndEncrypt(toVerify, friend.publicKey)}`;
-            this.send(msg, port, host);
+            this.sendRaw(msg, port, host);
           } else if (Number(time) === friend.verify.time && Number(index) === (friend.verify.index + 1)) {
             friend.secret = crypto.randomBytes(16).toString('hex');
             const msg = `bind ${this.signAndEncrypt(`exchange ${friend.secret}`, friend.publicKey)}`;
-            this.send(msg, port, host);
+            this.sendRaw(msg, port, host);
           }
           break;
         case 'exchange':
@@ -199,21 +199,21 @@ module.exports = function Factory(uid, opts) {
           if (secret.length === 32 && friend.secret == null) {
             friend.secret = `${secret}${crypto.randomBytes(16).toString('hex')}`;
             const msg = `bind ${this.signAndEncrypt(`exchange ${friend.secret}`, friend.publicKey)}`;
-            this.send(msg, port, host);
+            this.sendRaw(msg, port, host);
           } else if (secret.length === 64 && friend.secret === secret) {
             const msg = `bind ${this.signAndEncrypt('finalize', friend.publicKey)}`;
-            this.send(msg, port, host);
+            this.sendRaw(msg, port, host);
           } else if (secret.length === 64 && secret.indexOf(friend.secret) === 0) {
             friend.secret = secret;
             const msg = `bind ${this.signAndEncrypt(`exchange ${friend.secret}`, friend.publicKey)}`;
-            this.send(msg, port, host);
+            this.sendRaw(msg, port, host);
           }
           break;
         case 'finalize':
           console.log('state: finalize', data);
           if (data.length === 0) {
             const msg = `bind ${this.signAndEncrypt('finalize confirmed', friend.publicKey)}`;
-            this.send(msg, port, host);
+            this.sendRaw(msg, port, host);
           } else if (data[0] === 'confirmed') {
             friend.online = true;
             this.sendKeepAlive(friend.uid);
@@ -222,16 +222,8 @@ module.exports = function Factory(uid, opts) {
       }
     },
 
-    send(msg, port, host) {
-      this.socket.send(msg, 0, msg.length, port, host, (error) => {
-        if (error) {
-          return console.log(`error sending message to ${uid}`, error);
-        }
-        return this.emit('outgoing:raw', host, port, msg);
-      });
-    },
-
-    handleEncryptedMessage(friend, text) {
+    handleEncrypted(fuid, text) {
+      const friend = this.friends.find(({ uid }) => uid === fuid);
       const decipher = crypto.createDecipher(algorithm, friend.secret);
       let deciphered = decipher.update(text, outputEncoding, inputEncoding);
       deciphered += decipher.final(inputEncoding);
@@ -275,23 +267,35 @@ module.exports = function Factory(uid, opts) {
     },
 
     sendKeepAlive(uid) {
-      this.sendMessage(uid, { type: 'keep-alive' })
+      let friend;
+      return Q.fcall(() => {
+        friend = this.friends.find(f => f.uid === uid);
+        return this.sendMessage(uid, { type: 'keep-alive' });
+      })
         .then((id) => {
-          const friend = this.friends.find(f => f.uid === uid);
-          friend.online = false;
+          friend.tryCount += 1;
 
           const callback = (rid, uid) => {
             if (rid === id) {
               this.removeListener('is-alive', callback);
+              clearTimeout(timeout); // eslint-disable-line no-use-before-define
               friend.online = true;
               friend.lastTime = Date.now();
               friend.tryCount = 0;
               this.emit('online', uid);
             }
           };
+
+          const timeout = setTimeout(() => {
+            friend.online = false;
+            this.removeListener('is-alive', callback);
+          }, DT_TIMEOUT);
+
           this.on('is-alive', callback);
         })
         .catch((err) => {
+          friend.online = false;
+          friend.tryCount += 1;
           console.error(err);
         });
     },
@@ -304,9 +308,16 @@ module.exports = function Factory(uid, opts) {
           const callback = (rid, body) => {
             if (rid === id) {
               this.removeListener('response', callback);
+              clearTimeout(timeout); // eslint-disable-line no-use-before-define
               def.resolve(body);
             }
           };
+
+          const timeout = setTimeout(() => {
+            this.removeListener('response', callback);
+            def.reject(new Error('timeout waiting for response'));
+          }, DT_TIMEOUT);
+
           this.on('response', callback);
         });
 
