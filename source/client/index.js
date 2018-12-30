@@ -141,143 +141,85 @@ module.exports = function Factory(uid, opts) {
       return null;
     },
 
-    handleBinding(fuid, text = '') {
-      console.log('handleBinding');
-      let friend;
-      return Q.fcall(() => {
-        friend = this.friends.find(({ uid }) => uid === fuid);
-        if (!friend) {
-          throw new Error('Friend not found');
-        }
-        const { port, host } = friend.address.public;
-        const { state } = friend;
-        switch (state) {
-          default:
-            console.log('binding default', text);
-            if (text === 'bind start') {
-              friend.state = 'verify';
-              friend.verify = null;
-            } else {
-              friend.state = 'start';
-            }
-            this.send('bind start', port, host);
-            break;
-          case 'start':
-            console.log('binding start', text);
-            if (text === 'bind start') {
-              friend.state = 'verify';
-              friend.verify = {
-                time: Date.now(),
-                index: 0,
-              };
-              const toVerify = `verify ${friend.verify.time} ${friend.verify.index}`;
-              const msg = `bind ${this.signAndEncrypt(toVerify, friend.publicKey)}`;
-              this.send(msg, port, host);
-            } else {
-              this.send('bind start', port, host);
-            }
-            break;
-          case 'verify':
-            console.log('binding verify', text);
-            if (text) {
-              let toVerify;
-              try {
-                toVerify = this.decryptAndVerify(text.split(' ')[1], friend.publicKey);
-              } catch (err) {
-                // log this later
-              }
-              const [code, time, index] = toVerify.split(' ');
-              if (code && code === 'verify') {
-                if (friend.verify == null) {
-                  friend.state = 'exchange';
-                  friend.secret = null;
-                  const toVerify = `verify ${time} ${Number(index) + 1}`;
-                  const msg = `bind ${this.signAndEncrypt(toVerify, friend.publicKey)}`;
-                  this.send(msg, port, host);
-                } else if (Number(time) === friend.verify.time && Number(index) === (friend.verify.index + 1)) {
-                  friend.state = 'exchange';
-                  friend.secret = crypto.randomBytes(16).toString('hex');
-                  const msg = `bind ${this.signAndEncrypt(`secret ${friend.secret}`, friend.publicKey)}`;
-                  this.send(msg, port, host);
-                } else {
-                  friend.state = 'failure';
-                }
-              } else {
-                friend.state = 'failure';
-              }
-            } else {
-              friend.state = 'failure';
-            }
-            break;
-          case 'exchange':
-            console.log('binding exchange', text);
-            if (text) {
-              let toVerify;
-              try {
-                toVerify = this.decryptAndVerify(text.split(' ')[1], friend.publicKey);
-              } catch (err) {
-                // log this later
-              }
-              const [code, secret] = toVerify.split(' ');
-              console.log('friend.secret', friend.secret);
-              console.log(code, secret, secret.length);
-              if (code && code === 'secret') {
-                if (secret.length === 32 && friend.secret == null) {
-                  console.log('0');
-                  friend.secret = `${secret}${crypto.randomBytes(16).toString('hex')}`;
-                  const msg = `bind ${this.signAndEncrypt(`secret ${friend.secret}`, friend.publicKey)}`;
-                  this.send(msg, port, host);
-                } else if (secret.length === 64 && friend.secret === secret) {
-                  console.log('1');
-                  friend.state = 'finalize';
-                  const msg = `bind ${this.signAndEncrypt('finalize', friend.publicKey)}`;
-                  this.send(msg, port, host);
-                } else if (secret.length === 64 && secret.indexOf(friend.secret) === 0) {
-                  console.log('2');
-                  friend.state = 'finalize';
-                  friend.secret = secret;
-                  const msg = `bind ${this.signAndEncrypt(`secret ${friend.secret}`, friend.publicKey)}`;
-                  this.send(msg, port, host);
-                } else {
-                  console.log('ERROR: improper secret');
-                  friend.state = 'failure';
-                }
-              } else {
-                console.log('ERROR: improper code');
-                friend.state = 'failure';
-              }
-            } else {
-              console.log('ERROR: no text');
-              friend.state = 'failure';
-            }
-            break;
-          case 'finalize':
-            console.log('binding finalize', text);
-            if (text) {
-              let toVerify;
-              try {
-                toVerify = this.decryptAndVerify(text.split(' ')[1], friend.publicKey);
-              } catch (err) {
-                // log this later
-              }
-              if (toVerify && toVerify === 'finalize') {
-                friend.state = 'bound';
-                const msg = `bind ${this.signAndEncrypt('finalize confirmed', friend.publicKey)}`;
-                this.send(msg, port, host);
-              } else if (toVerify && toVerify === 'finalize confirmed') {
-                friend.state = 'bound';
-                friend.online = true;
-                this.sendKeepAlive(friend.uid);
-              } else {
-                friend.state = 'failure';
-              }
-            } else {
-              friend.state = 'failure';
-            }
-            break;
-        }
-        console.log('next', friend.state);
-      });
+    handleBinding(fuid, text = 'bind start') {
+      const friend = this.friends.find(({ uid }) => uid === fuid);
+      if (!friend) {
+        throw new Error('Friend not found');
+      }
+      const { port, host } = friend.address.public;
+      let [bind, state, ...data] = text.split(' ');
+      if (bind !== 'bind') {
+        throw new Error('Improper message');
+      }
+      if (state !== 'start') {
+        [state, ...data] = this.decryptAndVerify(state, friend.publicKey).split(' ');
+      }
+      let time;
+      let index;
+      let secret;
+      switch (state) {
+        default:
+        case 'start':
+          console.log('state: start', data);
+          friend.secret = null;
+          if (data.length > 0 && data[0] === 'continue') {
+            friend.verify = {
+              time: Date.now(),
+              index: 0,
+            };
+            const toVerify = `verify ${friend.verify.time} ${friend.verify.index}`;
+            const msg = `bind ${this.signAndEncrypt(toVerify, friend.publicKey)}`;
+            this.send(msg, port, host);
+          } else {
+            friend.verify = null;
+            this.send('bind start continue', port, host);
+          }
+          break;
+        case 'verify':
+          console.log('state: verify', text);
+          ([time, index] = data);
+          if (friend.verify == null) {
+            friend.secret = null;
+            friend.verify = {
+              time: Number(time),
+              index: Number(index) + 1,
+            };
+            const toVerify = `verify ${friend.verify.time} ${friend.verify.index}`;
+            const msg = `bind ${this.signAndEncrypt(toVerify, friend.publicKey)}`;
+            this.send(msg, port, host);
+          } else if (Number(time) === friend.verify.time && Number(index) === (friend.verify.index + 1)) {
+            friend.secret = crypto.randomBytes(16).toString('hex');
+            const msg = `bind ${this.signAndEncrypt(`exchange ${friend.secret}`, friend.publicKey)}`;
+            this.send(msg, port, host);
+          }
+          break;
+        case 'exchange':
+          console.log('state: exchange', text);
+          ([secret] = data);
+          if (secret.length === 32 && friend.secret == null) {
+            friend.secret = `${secret}${crypto.randomBytes(16).toString('hex')}`;
+            const msg = `bind ${this.signAndEncrypt(`exchange ${friend.secret}`, friend.publicKey)}`;
+            this.send(msg, port, host);
+          } else if (secret.length === 64 && friend.secret === secret) {
+            const msg = `bind ${this.signAndEncrypt('finalize', friend.publicKey)}`;
+            this.send(msg, port, host);
+          } else if (secret.length === 64 && secret.indexOf(friend.secret) === 0) {
+            friend.secret = secret;
+            const msg = `bind ${this.signAndEncrypt(`exchange ${friend.secret}`, friend.publicKey)}`;
+            this.send(msg, port, host);
+          }
+          break;
+        case 'finalize':
+          console.log('state: finalize', text);
+          if (data.length === 0) {
+            const msg = `bind ${this.signAndEncrypt('finalize confirmed', friend.publicKey)}`;
+            this.send(msg, port, host);
+          } else if (data[0] === 'confirmed') {
+            friend.online = true;
+            this.sendKeepAlive(friend.uid);
+          }
+          break;
+      }
     },
 
     send(msg, port, host) {

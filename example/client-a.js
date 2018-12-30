@@ -26,12 +26,12 @@ a.once('connected', () => {
 });
 
 a.addFriend(friendUid, friendPublicKey);
-setInterval(() => {
-  a.request('b12345', { route: '/ping', method: 'GET' })
-    .then((reply) => {
-      console.log(reply);
-    });
-}, 20000);
+// setInterval(() => {
+//   a.request('b12345', { route: '/ping', method: 'GET' })
+//     .then((reply) => {
+//       console.log(reply);
+//     });
+// }, 20000);
 
 a.on('online', (uid) => {
   console.log(`online: ${uid}`);
