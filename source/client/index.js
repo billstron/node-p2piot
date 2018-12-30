@@ -215,7 +215,10 @@ module.exports = function Factory(uid, opts) {
             const msg = `bind ${this.signAndEncrypt('finalize confirmed', friend.publicKey)}`;
             this.sendRaw(msg, port, host);
           } else if (data[0] === 'confirmed') {
-            friend.online = true;
+            if (!friend.online) {
+              this.emit('online', uid, true);
+              friend.online = true;
+            }
             this.sendKeepAlive(friend.uid);
           }
           break;
@@ -256,10 +259,12 @@ module.exports = function Factory(uid, opts) {
 
     handleKeepAlive(uid, rid) {
       const friend = this.friends.find(f => f.uid === uid);
-      friend.online = true;
+      if (!friend.online) {
+        this.emit('online', friend.uid, true);
+        friend.online = true;
+      }
       friend.lastTime = Date.now() - DT_OFFLINE_RETRY;
       friend.tryCount = 0;
-      this.emit('online', friend.uid);
       return this.sendMessage(uid, { type: 'is-alive', data: { rid } })
         .catch((err) => {
           console.log(err);
@@ -279,22 +284,32 @@ module.exports = function Factory(uid, opts) {
             if (rid === id) {
               this.removeListener('is-alive', callback);
               clearTimeout(timeout); // eslint-disable-line no-use-before-define
-              friend.online = true;
+              if (!friend.online) {
+                this.emit('online', uid, true);
+                friend.online = true;
+              }
               friend.lastTime = Date.now();
               friend.tryCount = 0;
-              this.emit('online', uid);
             }
           };
 
           const timeout = setTimeout(() => {
-            friend.online = false;
+            if (friend.online) {
+              friend.online = false;
+              this.emit('online', friend.uid, false);
+            }
+            friend.tryCount += 1;
+
             this.removeListener('is-alive', callback);
           }, DT_TIMEOUT);
 
           this.on('is-alive', callback);
         })
         .catch((err) => {
-          friend.online = false;
+          if (friend.online) {
+            friend.online = false;
+            this.emit('online', friend.uid, false);
+          }
           friend.tryCount += 1;
           console.error(err);
         });

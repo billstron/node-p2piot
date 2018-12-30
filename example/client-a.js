@@ -33,6 +33,6 @@ setInterval(() => {
     });
 }, 20000);
 
-a.on('online', (uid) => {
-  console.log(`online: ${uid}`);
+a.on('online', (uid, status) => {
+  console.log(`online: ${uid}`, status);
 });
