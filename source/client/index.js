@@ -255,7 +255,6 @@ module.exports = function Factory(uid, opts) {
     handleEncrypted(fuid, text) {
       const friend = this.friends.find(({ uid }) => uid === fuid);
       const { prefer } = friend;
-      console.log(friend);
       const decipher = crypto.createDecipher(algorithm, friend.address[prefer].secret);
       let deciphered = decipher.update(text, outputEncoding, inputEncoding);
       deciphered += decipher.final(inputEncoding);
