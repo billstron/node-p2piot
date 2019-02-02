@@ -1,14 +1,12 @@
 const Q = require('q');
-const redis = require('redis');
 const express = require('express');
 const bodyParser = require('body-parser');
 
-module.exports = function Factory(config) {
+module.exports = function Factory(config, db) {
   const { port } = config;
 
   const app = express();
   app.use(bodyParser.json());
-  const db = redis.createClient(config.redis);
 
   app.use((req, res, next) => {
     const { method, url } = req;
