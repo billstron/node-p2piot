@@ -26,16 +26,19 @@ a.once('connected', () => {
 });
 
 a.addFriend(friendUid, friendPublicKey);
-setInterval(() => {
-  a.request(friendUid, { route: '/ping', method: 'GET' })
-    .then((reply) => {
-      console.log(reply);
-    });
-}, 20000);
 
 a.on('online', (uid, status) => {
   console.log(`online: ${uid}`, status);
 });
+
+function echo(uid, text) {
+  setTimeout(() => {
+    a.request(uid, { route: '/message', method: 'POST', body: { text } })
+      .catch((err) => {
+        console.error(err);
+      });
+  }, 1000);
+}
 
 a.router = function router(req, response) {
   const { route, method, body, uid } = req; // eslint-disable-line no-unused-vars
@@ -44,6 +47,7 @@ a.router = function router(req, response) {
       return response(200, { msg: 'pong' });
     case '/message':
       console.log('received', uid, body.text);
+      echo(uid, body.text);
       return response(200, { msg: 'received' });
     default:
       return response(404, { msg: 'not found' });
