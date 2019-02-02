@@ -1,5 +1,5 @@
 {
-  "name": "p2piot",
+  "name": "node-p2piot",
   "version": "1.0.0",
   "description": "Peer to Peer Internet of Things",
   "main": "index.js",
