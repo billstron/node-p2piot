@@ -1,6 +1,6 @@
 require('dotenv').config();
 const fs = require('fs');
-const { client } = require('../');
+const client = require('../');
 
 const uid = process.env.B_UID;
 const privateKeyFile = process.env.B_PRIVATE_CERT;

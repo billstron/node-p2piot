@@ -1,5 +1,5 @@
 {
-  "name": "node-p2piot",
+  "name": "p2piot",
   "version": "1.0.0",
   "description": "Peer to Peer Internet of Things",
   "main": "index.js",
@@ -18,9 +18,7 @@
   "homepage": "https://github.com/billstron/node-p2piot#readme",
   "dependencies": {
     "axios": "^0.18.0",
-    "body-parser": "^1.18.3",
     "crypto": "^1.0.1",
-    "express": "^4.16.4",
     "node-rsa": "^1.0.2",
     "q": "^1.5.1",
     "vs-stun": "0.0.7"
@@ -31,7 +29,6 @@
     "eslint-config-airbnb": "^17.1.0",
     "eslint-plugin-import": "^2.14.0",
     "eslint-plugin-jsx-a11y": "^6.1.2",
-    "eslint-plugin-react": "^7.12.0",
-    "redis": "^2.8.0"
+    "eslint-plugin-react": "^7.12.0"
   }
 }
