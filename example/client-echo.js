@@ -33,6 +33,7 @@ a.on('online', (uid, status) => {
 
 function echo(uid, text) {
   setTimeout(() => {
+    console.log('echoing...');
     a.request(uid, { route: '/message', method: 'POST', body: { text } })
       .catch((err) => {
         console.error(err);
