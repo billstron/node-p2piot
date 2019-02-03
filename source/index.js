@@ -242,7 +242,7 @@ module.exports = function Factory(uid, opts) {
             this.sendRaw(msg, port, host);
           } else if (data[0] === 'confirmed') {
             if (!friend.online) {
-              this.emit('online', uid, true);
+              this.emit('online', friend.uid, true);
               friend.online = true;
               friend.prefer = address;
             }
