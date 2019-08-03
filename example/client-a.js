@@ -11,7 +11,7 @@ const friendPublicKeyFile = process.env.B_PUBLIC_KEY;
 const friendPublicKey = fs.readFileSync(friendPublicKeyFile).toString();
 
 const opts = {
-  locationServer: 'http://34.238.60.160:3000',
+  locationServer: 'https://pdns.billstron.com',
   stunServer: {
     host: 'stun1.l.google.com',
     port: 19302,
