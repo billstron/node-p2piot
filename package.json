@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/billstron/node-p2piot#readme",
   "dependencies": {
-    "axios": "^0.18.0",
+    "axios": "^0.18.1",
     "crypto": "^1.0.1",
     "node-rsa": "^1.0.2",
     "q": "^1.5.1",
